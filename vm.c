@@ -223,6 +223,79 @@ loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
   return 0;
 }
 
+
+
+int
+mprotect(void *addr, int len)
+{
+  pte_t *pte;
+  struct proc *proc = myproc();
+  int i;
+  //Check whether length is not greater than 0
+  if(len * PGSIZE +(int)addr > proc->vlimit && len <= 0){
+    cprintf("Error in Length \n");
+    return -1;
+  }
+  //Check the addr is page alined or not
+  if((int)(((int) addr) % PGSIZE ) != 0){
+    cprintf("Error in Address: %p \n", addr);
+    return -1;
+  }
+  for (i = (int) addr; i < ((len) * PGSIZE+(int) addr); i += PGSIZE){
+    pte = walkpgdir(proc->pgdir,(void*) i, 0);
+
+    if((((*pte & PTE_P) != 0) != 0) && ((*pte & PTE_U) && pte))
+    {
+      //Change it to readable and writable
+      *pte &= ~PTE_W;
+      cprintf("Page Table Entry = %p\n", pte);
+    }
+    else {
+      return -1;
+    }
+
+  }
+  //update
+  lcr3(V2P(proc->pgdir));
+
+  return 0;
+}
+
+int
+munprotect(void *addr, int len)
+{
+  struct proc *proc = myproc();
+  pte_t *pte;
+  int i2;
+
+  //Check whether length is not greater than 0
+  if(len *PGSIZE +(int)addr > proc->vlimit && len <= 0){
+    cprintf("Error in Length \n");
+    return -1;
+  }
+
+  //Check the addr is page alined or not
+  if((int)(((int) addr) % PGSIZE ) != 0){
+    cprintf("Error in Address: %p \n", addr);
+    return -1;
+  }
+  for (i2  = (int) addr; i2 < ((len) * PGSIZE+(int) addr); i2 += PGSIZE){
+    pte = walkpgdir(proc->pgdir,(void*) i2, 0);
+    //Check addr points to valid address space or not
+    if(((*pte & PTE_P) != 0) && pte && ((*pte & PTE_U) != 0))
+    {
+      //Change it to readable and writable
+      *pte |= (PTE_W);
+      cprintf("Page Table Entry = %p \n", pte);}
+    else{
+      return -1;
+    }
+  }
+  //update
+  lcr3(V2P(proc->pgdir));
+  return 0;
+}
+
 // Allocate page tables and physical memory to grow process from oldvlimit to
 // newvlimit, which need not be page aligned.  Returns new size or 0 on error.
 int
@@ -398,4 +471,3 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
 // Blank page.
 //PAGEBREAK!
 // Blank page.
-
