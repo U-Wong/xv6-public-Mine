@@ -228,11 +228,11 @@ loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
 int
 mprotect(void *addr, int len)
 {
-  pte_t *pte;
+  pte_t *ptable;
   struct proc *proc = myproc();
   int i;
   //Check whether length is not greater than 0
-  if(len * PGSIZE +(int)addr > proc->vlimit && len <= 0){
+  if(len * PGSIZE +(int)addr > proc->vlimit || len <= 0){
     cprintf("Error in Length \n");
     return -1;
   }
@@ -242,13 +242,13 @@ mprotect(void *addr, int len)
     return -1;
   }
   for (i = (int) addr; i < ((len) * PGSIZE+(int) addr); i += PGSIZE){
-    pte = walkpgdir(proc->pgdir,(void*) i, 0);
+    ptable = walkpgdir(proc->pgdir,(void*) i, 0);
 
-    if((((*pte & PTE_P) != 0) != 0) && ((*pte & PTE_U) && pte))
+    if((((*ptable & PTE_P) != 0) != 0) && ((*ptable & PTE_U) && ptable))
     {
       //Change it to readable and writable
-      *pte &= ~PTE_W;
-      cprintf("Page Table Entry = %p\n", pte);
+      *ptable &= ~PTE_W;
+      cprintf("Page Table Entry = %p\n", ptable);
     }
     else {
       return -1;
@@ -265,11 +265,11 @@ int
 munprotect(void *addr, int len)
 {
   struct proc *proc = myproc();
-  pte_t *pte;
+  pte_t *ptable;
   int i2;
 
   //Check whether length is not greater than 0
-  if(len *PGSIZE +(int)addr > proc->vlimit && len <= 0){
+  if(len *PGSIZE +(int)addr > proc->vlimit || len <= 0){
     cprintf("Error in Length \n");
     return -1;
   }
@@ -280,13 +280,13 @@ munprotect(void *addr, int len)
     return -1;
   }
   for (i2  = (int) addr; i2 < ((len) * PGSIZE+(int) addr); i2 += PGSIZE){
-    pte = walkpgdir(proc->pgdir,(void*) i2, 0);
+    ptable = walkpgdir(proc->pgdir,(void*) i2, 0);
     //Check addr points to valid address space or not
-    if(((*pte & PTE_P) != 0) && pte && ((*pte & PTE_U) != 0))
+    if(((*ptable & PTE_P) != 0) && ptable && ((*ptable & PTE_U) != 0))
     {
       //Change it to readable and writable
-      *pte |= (PTE_W);
-      cprintf("Page Table Entry = %p \n", pte);}
+      *ptable |= (PTE_W);
+      cprintf("Page Table Entry = %p \n", ptable);}
     else{
       return -1;
     }
